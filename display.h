@@ -25,7 +25,7 @@ void drawByte(uint8_t x, uint8_t y, uint8_t b);
 uint8_t getByte(uint8_t x, uint8_t y);
 void drawPixel(int8_t x, int8_t y, bool color, bool raycasterViewport);
 void drawVLine(uint8_t x, int8_t start_y, int8_t end_y, uint8_t intensity);
-void drawSprite(int8_t x, int8_t y, const uint8_t bitmap[], const uint8_t mask[], int16_t w, int16_t h, uint8_t sprite, double distance);
+void drawSprite(int32_t x, int32_t y, const uint8_t bitmap[], const uint8_t mask[], int16_t w, int16_t h, uint8_t sprite, double distance);
 void drawChar(int8_t x, int8_t y, char ch);
 void drawText(int8_t x, int8_t y, char *txt, uint8_t space = 1);
 void drawText(int8_t x, int8_t y, const __FlashStringHelper txt, uint8_t space = 1);
@@ -173,17 +173,17 @@ void drawVLine(uint8_t x, int8_t start_y, int8_t end_y, uint8_t intensity) {
 
 // Custom drawBitmap method with scale support, mask, zindex and pattern filling
 void drawSprite(
-  int8_t x, int8_t y,
+  int32_t x, int32_t y,
   const uint8_t bitmap[], const uint8_t mask[],
-  int16_t w, int16_t h,
+  int32_t w, int32_t h,
   uint8_t sprite,
   double distance
 ) {
-  uint8_t tw = (double) w / distance;
-  uint8_t th = (double) h / distance;
-  uint8_t byte_width = w / 8;
-  uint8_t pixel_size = max(1, 1.0 / distance);
-  uint16_t sprite_offset = byte_width * h * sprite;
+  uint32_t tw = (double) w / distance;
+  uint32_t th = (double) h / distance;
+  uint32_t byte_width = w / 8;
+  uint32_t pixel_size = max(1, 1.0 / distance);
+  uint32_t sprite_offset = byte_width * h * sprite;
 
   bool pixel;
   bool maskPixel;
@@ -194,17 +194,17 @@ void drawSprite(
     return;
   }
 
-  for (uint8_t ty = 0; ty < th; ty += pixel_size) {
+  for (uint32_t ty = 0; ty < th; ty += pixel_size) {
     // Don't draw out of screen
     if (y + ty < 0 || y + ty >= RENDER_HEIGHT) {
       continue;
     }
 
-    uint8_t sy = ty * distance; // The y from the sprite
+    uint32_t sy = ty * distance; // The y from the sprite
 
-    for (uint8_t tx = 0; tx < tw; tx += pixel_size) {
-      uint8_t sx = tx * distance; // The x from the sprite
-      uint16_t byte_offset = sprite_offset + sy * byte_width + sx / 8;
+    for (uint32_t tx = 0; tx < tw; tx += pixel_size) {
+      uint32_t sx = tx * distance; // The x from the sprite
+      uint32_t byte_offset = sprite_offset + sy * byte_width + sx / 8;
 
       // Don't draw out of screen
       if (x + tx < 0 || x + tx >= SCREEN_WIDTH) {
@@ -215,8 +215,8 @@ void drawSprite(
 
       if (maskPixel) {
         pixel = read_bit(pgm_read_byte(bitmap + byte_offset), sx % 8);
-        for (uint8_t ox = 0; ox < pixel_size; ox++) {
-          for (uint8_t oy = 0; oy < pixel_size; oy++) {
+        for (uint32_t ox = 0; ox < pixel_size; ox++) {
+          for (uint32_t oy = 0; oy < pixel_size; oy++) {
             drawPixel(x + tx + ox, y + ty + oy, pixel, true);
           }
         }
@@ -231,7 +231,7 @@ void drawSprite(
 void drawChar(int8_t x, int8_t y, char ch) {
   uint8_t c = 0;
   uint8_t n;
-  uint8_t bOffset;
+  uint16_t bOffset;
   uint8_t b;
   uint8_t line = 0;
 

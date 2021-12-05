@@ -11,10 +11,10 @@ constexpr uint8_t SOUND_PIN   = 9; // do not change, belongs to used timer
 #define RES_DIVIDER         1           // Higher values will result in lower horizontal resolution when rasterize and lower process and memory usage
                                         // Lower will require more process and memory, but looks nicer
 #define Z_RES_DIVIDER       1           // Zbuffer resolution divider. We sacrifice resolution to save memory
-#define DISTANCE_MULTIPLIER 20          // Distances are stored as uint8_t, multiplying the distance we can obtain more precision taking care
+#define DISTANCE_MULTIPLIER 25          // Distances are stored as uint8_t, multiplying the distance we can obtain more precision taking care
                                         // of keep numbers inside the type range. Max is 256 / MAX_RENDER_DEPTH
 #define MAX_RENDER_DEPTH    14
-#define MAX_SPRITE_DEPTH    14
+#define MAX_SPRITE_DEPTH    12
 
 #define ZBUFFER_SIZE        SCREEN_WIDTH / Z_RES_DIVIDER
 
@@ -44,8 +44,8 @@ constexpr uint8_t SOUND_PIN   = 9; // do not change, belongs to used timer
 #define MAX_ENTITIES          30          // Max num of active entities
 #define MAX_STATIC_ENTITIES   50          // Max num of entities in sleep mode
 
-#define MAX_ENTITY_DISTANCE   200         // * DISTANCE_MULTIPLIER
-#define MAX_ENEMY_VIEW        80          // * DISTANCE_MULTIPLIER
+#define MAX_ENTITY_DISTANCE   200        // * DISTANCE_MULTIPLIER
+#define MAX_ENEMY_VIEW        100          // * DISTANCE_MULTIPLIER
 #define ITEM_COLLIDER_DIST    6           // * DISTANCE_MULTIPLIER
 #define ENEMY_COLLIDER_DIST   4           // * DISTANCE_MULTIPLIER
 #define FIREBALL_COLLIDER_DIST 2          // * DISTANCE_MULTIPLIER

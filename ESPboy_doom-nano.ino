@@ -13,6 +13,8 @@
 // Useful macros
 #define swap(a, b)            do { typeof(a) temp = a; a = b; b = temp; } while (0)
 #define sign(a, b)            (double) (a > b ? 1 : (b > a ? -1 : 0))
+#define abs_(a)               ((a<0)?(-a):(a))
+
 
 #define VERT_DISPLAY_OFFSET 20
 
@@ -38,10 +40,6 @@ uint8_t num_static_entities = 0;
 
 //!!!!!!!!!!!!ESPboy additional functions start
 
-double abs_(double number){
-  if (number<0) return -number;
-  return number;
-};
 
 void getControllerData(){
   readKeysResult = myESPboy.getKeys();
@@ -151,7 +149,7 @@ void initializeLevel(const uint8_t level[]) {
   }
 }
 
-uint8_t getBlockAt(const uint8_t level[], uint8_t x, uint8_t y) {
+uint8_t getBlockAt(const uint8_t level[], uint32_t x, uint32_t y) {
   if (x < 0 || x >= LEVEL_WIDTH || y < 0 || y >= LEVEL_HEIGHT) {
     return E_FLOOR;
   }
@@ -178,7 +176,7 @@ bool isStatic(UID uid) {
   return false;
 }
 
-void spawnEntity(uint8_t type, uint8_t x, uint8_t y) {
+void spawnEntity(uint8_t type, uint32_t x, uint32_t y) {
   // Limit the number of spawned entities
   if (num_entities >= MAX_ENTITIES) {
     return;
@@ -262,9 +260,9 @@ void removeStaticEntity(UID uid) {
 
 UID detectCollision(const uint8_t level[], Coords *pos, double relative_x, double relative_y, bool only_walls = false) {
   // Wall collision
-  uint8_t round_x = int(pos->x + relative_x);
-  uint8_t round_y = int(pos->y + relative_y);
-  uint8_t block = getBlockAt(level, round_x, round_y);
+  uint32_t round_x = int32_t(pos->x + relative_x);
+  uint32_t round_y = int32_t(pos->y + relative_y);
+  uint32_t block = getBlockAt(level, round_x, round_y);
 
   if (block == E_WALL) {
     playSound(hit_wall_snd, HIT_WALL_SND_LEN);
@@ -290,7 +288,7 @@ UID detectCollision(const uint8_t level[], Coords *pos, double relative_x, doubl
     }
 
     Coords new_coords = { entity[i].pos.x - relative_x, entity[i].pos.y - relative_y };
-    uint8_t distance = coords_distance(pos, &new_coords);
+    uint32_t distance = coords_distance(pos, &new_coords);
 
     // Check distance and if it's getting closer
     if (distance < ENEMY_COLLIDER_DIST && distance < entity[i].distance) {
@@ -403,6 +401,7 @@ void updateEntities(const uint8_t level[]) {
                 }
               }
             } else if (entity[i].distance <= ENEMY_MELEE_DIST) {
+              Serial.println(i);
               if (entity[i].state != S_MELEE) {
                 // Preparing the melee attack
                 entity[i].state = S_MELEE;
@@ -486,14 +485,14 @@ void renderMap(const uint8_t level[], double view_height) {
     double camera_x = 2 * (double) x / SCREEN_WIDTH - 1;
     double ray_x = player.dir.x + player.plane.x * camera_x;
     double ray_y = player.dir.y + player.plane.y * camera_x;
-    uint8_t map_x = uint8_t(player.pos.x);
-    uint8_t map_y = uint8_t(player.pos.y);
+    uint32_t map_x = uint32_t(player.pos.x);
+    uint32_t map_y = uint32_t(player.pos.y);
     Coords map_coords = { player.pos.x, player.pos.y };
     double delta_x = abs_(1 / ray_x);
     double delta_y = abs_(1 / ray_y);
 
-    int8_t step_x; 
-    int8_t step_y;
+    int32_t step_x; 
+    int32_t step_y;
     double side_x;
     double side_y;
 
@@ -514,7 +513,7 @@ void renderMap(const uint8_t level[], double view_height) {
     }
 
     // Wall detection
-    uint8_t depth = 0;
+    uint32_t depth = 0;
     bool hit = 0;
     bool side; 
     while (!hit && depth < MAX_RENDER_DEPTH) {
@@ -528,7 +527,7 @@ void renderMap(const uint8_t level[], double view_height) {
         side = 1;
       }
 
-      uint8_t block = getBlockAt(level, map_x, map_y);
+      uint32_t block = getBlockAt(level, map_x, map_y);
 
       if (block == E_WALL) {
         hit = 1;
@@ -577,8 +576,8 @@ void renderMap(const uint8_t level[], double view_height) {
 }
 
 // Sort entities from far to close
-uint8_t sortEntities() {
-  uint8_t gap = num_entities;
+uint32_t sortEntities() {
+  uint32_t gap = num_entities;
   bool swapped = false;
   while (gap > 1 || swapped) {
     //shrink factor 1.3
@@ -615,6 +614,7 @@ void renderEntities(double view_height) {
   sortEntities();
 
   for (uint8_t i = 0; i < num_entities; i++) {
+    delay(0);
     if (entity[i].state == S_HIDDEN) continue;
 
     Coords transform = translateIntoView(&(entity[i].pos));
@@ -624,8 +624,8 @@ void renderEntities(double view_height) {
       continue;
     }
 
-    int16_t sprite_screen_x = HALF_WIDTH * (1.0 + transform.x / transform.y);
-    int8_t sprite_screen_y = RENDER_HEIGHT / 2 + view_height / transform.y;
+    int32_t sprite_screen_x = HALF_WIDTH * (1.0 + transform.x / transform.y);
+    int32_t sprite_screen_y = RENDER_HEIGHT / 2 + view_height / transform.y;
     uint8_t type = uid_get_type(entity[i].uid);
 
     // don´t try to render if outside of screen

@@ -42,18 +42,18 @@ struct Entity {
   Coords pos;
   uint8_t state;
   uint8_t health;     // angle for fireballs
-  uint16_t distance;
+  uint32_t distance;
   uint8_t timer;
 };
 
 struct StaticEntity  { 
   UID uid;
-  uint16_t x;
-  uint16_t y;
+  uint32_t x;
+  uint32_t y;
   bool active;
 };
 
-Entity create_entity(uint8_t type, uint16_t x,  uint16_t y, uint8_t initialState, uint8_t initialHealth);
-StaticEntity create_static_entity(UID uid, uint16_t x,  uint16_t y, bool active);
+Entity create_entity(uint8_t type, uint32_t x,  uint32_t y, uint8_t initialState, uint8_t initialHealth);
+StaticEntity create_static_entity(UID uid, uint32_t x,  uint32_t y, bool active);
 
 #endif
