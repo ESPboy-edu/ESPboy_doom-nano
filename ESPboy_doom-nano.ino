@@ -86,18 +86,18 @@ void display_drawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, 
 
 
 void display_clearRect(int16_t x, int16_t y, int16_t w, int16_t h){
-  for (int16_t j = 0; j < h; j++, y++)
+  for (int16_t j = 0; j < h; j++)
     for (int16_t i = 0; i < w; i++)
-        writePixel(x + i, y+j, 0);
+        writePixel(x + i, y + j, 0);
 }
 
 
-void display_display(bool invertMode){ 
+void display_display(){ 
   static uint16_t oBuffer[SCREEN_WIDTH*16];
   static uint8_t currentDataByte;
   static uint16_t foregroundColor, backgroundColor, xPos, yPos, kPos, kkPos, addr;
 
-  if(!invertMode){
+  if(!invert_screen){
     backgroundColor = TFT_BLACK;
     foregroundColor = TFT_YELLOW;}
   else{
@@ -774,7 +774,7 @@ void loopIntro() {
 
   delay(1000);
   drawText(SCREEN_WIDTH / 2 - 25, SCREEN_HEIGHT * .8, F("PRESS FIRE"));
-  display_display(false);
+  display_display();
 
   // wait for fire
   while (!exit_scene) {
@@ -914,7 +914,7 @@ void loopGamePlay() {
 
     // Draw the frame
     //display.invertDisplay(invert_screen);
-    display_display(true);
+    display_display();
 
     // Exit routine
     if (input_left() && input_right()) {
@@ -942,7 +942,7 @@ void loop(void) {
   // fade out effect
   for (uint8_t i=0; i<GRADIENT_COUNT; i++) {
     fadeScreen(i, 0);
-    display_display(false);
+    display_display();
     delay(40);
   }
   exit_scene = false;
