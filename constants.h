@@ -41,8 +41,8 @@ constexpr uint8_t SOUND_PIN   = 9; // do not change, belongs to used timer
 #define FIREBALL_SPEED        .2
 #define FIREBALL_ANGLES       45          // Num of angles per PI
 
-#define MAX_ENTITIES          10          // Max num of active entities
-#define MAX_STATIC_ENTITIES   28          // Max num of entities in sleep mode
+#define MAX_ENTITIES          30          // Max num of active entities
+#define MAX_STATIC_ENTITIES   50          // Max num of entities in sleep mode
 
 #define MAX_ENTITY_DISTANCE   200         // * DISTANCE_MULTIPLIER
 #define MAX_ENEMY_VIEW        80          // * DISTANCE_MULTIPLIER
