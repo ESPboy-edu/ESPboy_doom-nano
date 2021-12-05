@@ -1,8 +1,13 @@
 /* 
 todo: Moving this to CPP looks like it takes more Flash storage. Figure out why.
 */
-#include "SSD1306.h"
+
+
+//#include "SSD1306.h"
 #include "constants.h"
+
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#define max(a,b) ((a) > (b) ? (a) : (b))
 
 // Reads a char from an F() string
 #define F_char(ifsh, ch)    pgm_read_byte(reinterpret_cast<PGM_P>(ifsh) + ch)
@@ -10,6 +15,7 @@ todo: Moving this to CPP looks like it takes more Flash storage. Figure out why.
 // This is slightly faster than bitRead (also bits are read from left to right)
 const static uint8_t PROGMEM bit_mask[8] = { 128, 64, 32, 16, 8, 4, 2, 1 };
 #define read_bit(b, n)      b & pgm_read_byte(bit_mask + n) ? 1 : 0
+
 
 void setupDisplay();
 void fps();
@@ -25,7 +31,7 @@ void drawText(int8_t x, int8_t y, char *txt, uint8_t space = 1);
 void drawText(int8_t x, int8_t y, const __FlashStringHelper txt, uint8_t space = 1);
 
 // Initialize screen. Following line is for OLED 128x64 connected by I2C
-Adafruit_SSD1306<SCREEN_WIDTH, SCREEN_HEIGHT> display;
+//Adafruit_SSD1306<SCREEN_WIDTH, SCREEN_HEIGHT> display;
 
 // FPS control
 double delta = 1;
@@ -33,7 +39,7 @@ uint32_t lastFrameTime = 0;
 
 #ifdef OPTIMIZE_SSD1306
 // Optimizations for SSD1306 handles buffer directly
-uint8_t *display_buf;
+uint8_t display_buf[128*64/8];
 #endif
 
 // We don't handle more than MAX_RENDER_DEPTH depth, so we can safety store
@@ -43,13 +49,13 @@ uint8_t zbuffer[ZBUFFER_SIZE];
 void setupDisplay() {
   // Setup display
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Fixed from 0x3D
-    Serial.println(F("SSD1306 allocation failed"));
-    while (1); // Don't proceed, loop forever
-  }
+//  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Fixed from 0x3D
+ //   Serial.println(F("SSD1306 allocation failed"));
+//    while (1); // Don't proceed, loop forever
+//  }
 
 #ifdef OPTIMIZE_SSD1306
-  display_buf = display.getBuffer();
+  //display_buf = display.getBuffer();
 #endif
 
   // initialize z buffer

@@ -1,15 +1,25 @@
+#include "input.h"
 #include "constants.h"
 #include "level.h"
 #include "sprites.h"
-#include "input.h"
 #include "entities.h"
 #include "types.h"
 #include "display.h"
 #include "sound.h"
+#include "lib/ESPboyInit.h"
+#include "lib/ESPboyInit.cpp"
+
 
 // Useful macros
 #define swap(a, b)            do { typeof(a) temp = a; a = b; b = temp; } while (0)
 #define sign(a, b)            (double) (a > b ? 1 : (b > a ? -1 : 0))
+
+#define VERT_DISPLAY_OFFSET 20
+
+ESPboyInit myESPboy;
+
+extern uint8_t display_buf[];
+uint16_t readKeysResult=0;
 
 // general
 uint8_t scene = INTRO;
@@ -25,10 +35,98 @@ StaticEntity static_entity[MAX_STATIC_ENTITIES];
 uint8_t num_entities = 0;
 uint8_t num_static_entities = 0;
 
+
+//!!!!!!!!!!!!ESPboy additional functions start
+
+double abs_(double number){
+  if (number<0) return -number;
+  return number;
+};
+
+void getControllerData(){
+  readKeysResult = myESPboy.getKeys();
+}
+
+
+void writePixel(int16_t x, int16_t y, uint8_t color){
+  if (x < 0 || x > (SCREEN_WIDTH-1) || y < 0 || y > (SCREEN_HEIGHT-1)){
+    return;
+  }
+  uint8_t row = (uint8_t)y / 8;
+  if (color){
+    display_buf[(row*SCREEN_WIDTH) + (uint8_t)x] |=   _BV((uint8_t)y % 8);
+  }
+  else{
+    display_buf[(row*SCREEN_WIDTH) + (uint8_t)x] &= ~ _BV((uint8_t)y % 8);
+  }
+}
+
+void adafruitDrawBitmap(int16_t x, int16_t y, const uint8_t bitmap[], int16_t w, int16_t h, uint16_t color) {
+
+  int16_t byteWidth = (w + 7) / 8; // Bitmap scanline pad = whole byte
+  uint8_t byte = 0;
+  
+  for (int16_t j = 0; j < h; j++, y++) {
+    for (int16_t i = 0; i < w; i++) {
+      if (i & 7)
+        byte <<= 1;
+      else
+        byte = pgm_read_byte(&bitmap[j * byteWidth + i / 8]);
+      if (byte & 0x80)
+        writePixel(x + i, y, color);
+    }
+  }
+}
+
+
+void display_drawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color){
+  adafruitDrawBitmap(x, y, bitmap, w, h, color);
+}
+
+
+
+void display_clearRect(int16_t x, int16_t y, int16_t w, int16_t h){
+  for (int16_t j = 0; j < h; j++, y++)
+    for (int16_t i = 0; i < w; i++)
+        writePixel(x + i, y+j, 0);
+}
+
+
+void display_display(bool invertMode){ 
+  static uint16_t oBuffer[SCREEN_WIDTH*16];
+  static uint8_t currentDataByte;
+  static uint16_t foregroundColor, backgroundColor, xPos, yPos, kPos, kkPos, addr;
+
+  if(!invertMode){
+    backgroundColor = TFT_BLACK;
+    foregroundColor = TFT_YELLOW;}
+  else{
+    backgroundColor = TFT_YELLOW;
+    foregroundColor = TFT_BLACK;};
+ 
+  for(kPos = 0; kPos<4; kPos++){  //if exclude this 4 parts screen devision and process all the big oBuffer, EPS8266 resets (
+    kkPos = kPos<<1;
+    for (xPos = 0; xPos < SCREEN_WIDTH; xPos++) {
+      for (yPos = 0; yPos < 16; yPos++) {    
+        if (!(yPos % 8)) currentDataByte = display_buf[xPos + ((yPos>>3)+kkPos) * SCREEN_WIDTH];
+        addr =  yPos*SCREEN_WIDTH+xPos;
+            if (currentDataByte & 0x01) oBuffer[addr] = foregroundColor;
+            else oBuffer[addr] = backgroundColor;
+      currentDataByte = currentDataByte >> 1;
+    }
+    }
+    myESPboy.tft.pushImage(0, VERT_DISPLAY_OFFSET+kPos*16, SCREEN_WIDTH, 16, oBuffer);
+  }
+}
+
+//!!!!!!!!!!!!ESPboy additional functions end
+
+
 void setup(void) {
+  Serial.begin(115200);
   setupDisplay();
-  input_setup();
   sound_init();
+  myESPboy.begin("Doom-nano");
 }
 
 // Jump to another scene
@@ -214,8 +312,8 @@ void fire() {
     }
 
     Coords transform = translateIntoView(&(entity[i].pos));
-    if (abs(transform.x) < 20 && transform.y > 0) {
-      uint8_t damage = (double) min(GUN_MAX_DAMAGE, GUN_MAX_DAMAGE / (abs(transform.x) * entity[i].distance) / 5);
+    if (abs_(transform.x) < 20 && transform.y > 0) {
+      uint8_t damage = (double) min(GUN_MAX_DAMAGE, GUN_MAX_DAMAGE / (abs_(transform.x) * entity[i].distance) / 5);
       if (damage > 0) {
         entity[i].health = max(0, entity[i].health - damage);
         entity[i].state = S_HIT;
@@ -229,7 +327,7 @@ void fire() {
 UID updatePosition(const uint8_t level[], Coords *pos, double relative_x, double relative_y, bool only_walls = false) {
   UID collide_x = detectCollision(level, pos, relative_x, 0, only_walls);
   UID collide_y = detectCollision(level, pos, 0, relative_y, only_walls);
-
+   
   if (!collide_x) pos->x += relative_x;
   if (!collide_y) pos->y += relative_y;
 
@@ -391,8 +489,8 @@ void renderMap(const uint8_t level[], double view_height) {
     uint8_t map_x = uint8_t(player.pos.x);
     uint8_t map_y = uint8_t(player.pos.y);
     Coords map_coords = { player.pos.x, player.pos.y };
-    double delta_x = abs(1 / ray_x);
-    double delta_y = abs(1 / ray_y);
+    double delta_x = abs_(1 / ray_x);
+    double delta_y = abs_(1 / ray_y);
 
     int8_t step_x; 
     int8_t step_y;
@@ -618,22 +716,25 @@ void renderEntities(double view_height) {
   }
 }
 
+
+
+
 void renderGun(uint8_t gun_pos, double amount_jogging) {
   // jogging
-  char x = 48 + sin((double) millis() * JOGGING_SPEED) * 10 * amount_jogging;
-  char y = RENDER_HEIGHT - gun_pos + abs(cos((double) millis() * JOGGING_SPEED)) * 8 * amount_jogging;
+  signed char x = 48 + sin((double) millis() * JOGGING_SPEED) * 10 * amount_jogging;
+  signed char y = RENDER_HEIGHT - gun_pos + abs_(cos((double) millis() * JOGGING_SPEED)) * 8 * amount_jogging;
 
   if (gun_pos > GUN_SHOT_POS - 2) {
     // Gun fire
-    display.drawBitmap(x + 6, y - 11, bmp_fire_bits, BMP_FIRE_WIDTH, BMP_FIRE_HEIGHT, 1);
+    display_drawBitmap(x + 6, y - 11, bmp_fire_bits, BMP_FIRE_WIDTH, BMP_FIRE_HEIGHT, 1);
   }
 
   // Don't draw over the hud!
   uint8_t clip_height = max(0, min(y + BMP_GUN_HEIGHT, RENDER_HEIGHT) - y);
 
   // Draw the gun (black mask + actual sprite).
-  display.drawBitmap(x, y, bmp_gun_mask, BMP_GUN_WIDTH, clip_height, 0);
-  display.drawBitmap(x, y, bmp_gun_bits, BMP_GUN_WIDTH, clip_height, 1);
+  display_drawBitmap(x, y, bmp_gun_mask, BMP_GUN_WIDTH, clip_height, 0);
+  display_drawBitmap(x, y, bmp_gun_bits, BMP_GUN_WIDTH, clip_height, 1);
 }
 
 // Only needed first time
@@ -645,8 +746,8 @@ void renderHud() {
 
 // Render values for the HUD
 void updateHud() {
-  display.clearRect(12, 58, 15, 6);
-  display.clearRect(50, 58, 5, 6);
+  display_clearRect(12, 58, 15, 6);
+  display_clearRect(50, 58, 5, 6);
 
   drawText(12, 58, player.health);
   drawText(50, 58, player.keys);
@@ -654,7 +755,7 @@ void updateHud() {
 
 // Debug stats
 void renderStats() {
-  display.clearRect(58, 58, 70, 6);
+  display_clearRect(58, 58, 70, 6);
   drawText(114, 58, int(getActualFps()));
   drawText(82, 58, num_entities);
   // drawText(94, 58, freeMemory());
@@ -662,7 +763,7 @@ void renderStats() {
 
 // Intro screen
 void loopIntro() {
-  display.drawBitmap(
+  display_drawBitmap(
     (SCREEN_WIDTH - BMP_LOGO_WIDTH) / 2,
     (SCREEN_HEIGHT - BMP_LOGO_HEIGHT) / 3,
     bmp_logo_bits,
@@ -673,16 +774,16 @@ void loopIntro() {
 
   delay(1000);
   drawText(SCREEN_WIDTH / 2 - 25, SCREEN_HEIGHT * .8, F("PRESS FIRE"));
-  display.display();
+  display_display(false);
 
   // wait for fire
   while (!exit_scene) {
-    #ifdef SNES_CONTROLLER
+    delay(50);
     getControllerData();
-    #endif
     if (input_fire()) jumpTo(GAME_PLAY);
   };
 }
+
 
 void loopGamePlay() {
   bool gun_fired = false;
@@ -698,27 +799,25 @@ void loopGamePlay() {
   initializeLevel(sto_level_1);
 
   do {
+    delay(0);
     fps();
+    getControllerData();
 
     // Clear only the 3d view
     memset(display_buf, 0, SCREEN_WIDTH * (RENDER_HEIGHT / 8));
-
-    #ifdef SNES_CONTROLLER
-    getControllerData();
-    #endif
 
     // If the player is alive
     if (player.health > 0) {
       // Player speed
       if (input_up()) {
         player.velocity += (MOV_SPEED - player.velocity) * .4;
-        jogging = abs(player.velocity) * MOV_SPEED_INV;
+        jogging = abs_(player.velocity) * MOV_SPEED_INV;
       } else if (input_down()) {
         player.velocity += (- MOV_SPEED - player.velocity) * .4;
-        jogging = abs(player.velocity) * MOV_SPEED_INV;
+        jogging = abs_(player.velocity) * MOV_SPEED_INV;
       } else {
         player.velocity *= .5;
-        jogging = abs(player.velocity) * MOV_SPEED_INV;
+        jogging = abs_(player.velocity) * MOV_SPEED_INV;
       }
 
       // Player rotation
@@ -740,7 +839,7 @@ void loopGamePlay() {
         player.plane.y = old_plane_x * sin(rot_speed) + player.plane.y * cos(rot_speed);
       }
 
-      view_height = abs(sin((double) millis() * JOGGING_SPEED)) * 6 * jogging;
+      view_height = abs_(sin((double) millis() * JOGGING_SPEED)) * 6 * jogging;
 
       if(view_height > 5.9) {
         if(sound == false) {
@@ -777,14 +876,9 @@ void loopGamePlay() {
       if (gun_pos > 1) gun_pos -= 2;
     }
 
-    // Player movement
-    if (abs(player.velocity) > 0.003) {
-      updatePosition(
-        sto_level_1,
-        &(player.pos),
-        player.dir.x * player.velocity * delta,
-        player.dir.y * player.velocity * delta
-      );
+    // Player movement    
+    if (abs_(player.velocity) > 0.003) {
+      updatePosition(sto_level_1, &(player.pos), player.dir.x * player.velocity * delta, player.dir.y * player.velocity * delta);
     } else {
       player.velocity = 0;
     }
@@ -819,28 +913,28 @@ void loopGamePlay() {
     }
 
     // Draw the frame
-    display.invertDisplay(invert_screen);
-    display.display();
+    //display.invertDisplay(invert_screen);
+    display_display(true);
 
     // Exit routine
-    #ifdef SNES_CONTROLLER
-    if (input_start()) {
-    #else
     if (input_left() && input_right()) {
-    #endif
       jumpTo(INTRO);
     }
   } while (!exit_scene);
 }
 
+
+
 void loop(void) {
   switch (scene) {
     case INTRO: {
         loopIntro();
+        delay(0);
         break;
       }
     case GAME_PLAY: {
         loopGamePlay();
+        delay(0);
         break;
       }
   }
@@ -848,7 +942,7 @@ void loop(void) {
   // fade out effect
   for (uint8_t i=0; i<GRADIENT_COUNT; i++) {
     fadeScreen(i, 0);
-    display.display();
+    display_display(false);
     delay(40);
   }
   exit_scene = false;
